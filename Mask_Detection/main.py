@@ -1,11 +1,13 @@
 from keras.models import load_model
-from time import sleep
 from keras.preprocessing.image import img_to_array
-from keras.preprocessing import image
 import cv2
 import numpy as np
+from mtcnn import MTCNN
 
-face_classifier = cv2.CascadeClassifier(r'C:\programming\DataScience\DataScience-Projects\Mask_Detection\haarcascade_frontalface_default.xml')
+# Initialize MTCNN face detector
+face_detector = MTCNN()
+
+# Load the mask detection model
 try:
     classifier = load_model(r'C:\programming\DataScience\DataScience-Projects\Mask_Detection\mask_detector.keras')
     print("Model loaded successfully.")
@@ -17,32 +19,40 @@ classes = ['No Mask', 'Mask']
 cap = cv2.VideoCapture(0)
 
 while True:
-    _, frame = cap.read()
-    labels = []
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = face_classifier.detectMultiScale(gray)
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-    for (x, y, w, h) in faces:
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
-        roi_gray = gray[y:y+h, x:x+w]
-        roi_gray = cv2.resize(roi_gray, (128, 128), interpolation=cv2.INTER_AREA)
+    frame = cv2.resize(frame, (640, 480))
 
-        # Convert grayscale to RGB
-        roi_rgb = cv2.cvtColor(roi_gray, cv2.COLOR_GRAY2RGB)
+    # Convert the frame to RGB (MTCNN works with RGB images)
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        if np.sum([roi_rgb]) != 0:
-            roi = roi_rgb.astype('float') / 255.0
-            roi = img_to_array(roi)
-            roi = np.expand_dims(roi, axis=0)
+    # Detect faces using MTCNN
+    faces = face_detector.detect_faces(rgb_frame)
 
-            prediction = classifier.predict(roi)[0]
+    for face in faces:
+        x, y, w, h = face['box']
+        confidence = face['confidence']
+
+        if confidence > 0.9:  # Confidence threshold
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
+
+            # Extract the region of interest (ROI) and preprocess it for prediction
+            roi_rgb = rgb_frame[y:y+h, x:x+w]
+            roi_rgb = cv2.resize(roi_rgb, (128, 128), interpolation=cv2.INTER_AREA)
+            roi_rgb = roi_rgb.astype('float32') / 255.0
+            roi_rgb = img_to_array(roi_rgb)
+            roi_rgb = np.expand_dims(roi_rgb, axis=0)
+
+            # Predict mask/no-mask
+            prediction = classifier.predict(roi_rgb)[0]
             label = classes[prediction.argmax()]
-            label_position = (x, y)
-            cv2.putText(frame, label, label_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        else:
-            cv2.putText(frame, 'No Faces', (255, 255), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # label_position = (x, y - 10)
+            # cv2.putText(frame, label, label_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            print(label)
 
-    cv2.imshow('Emotion Detector', frame)
+    cv2.imshow('Mask Detector', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
