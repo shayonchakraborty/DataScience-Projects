@@ -25,7 +25,7 @@ while True:
 
     frame = cv2.resize(frame, (640, 480))
 
-    # Convert the frame to RGB (MTCNN works with RGB images)
+    # Convert the frame to RGB ( MTCNN works with RGB images )
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     # Detect faces using MTCNN
