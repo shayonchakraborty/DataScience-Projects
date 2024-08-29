@@ -48,9 +48,9 @@ while True:
             # Predict mask/no-mask
             prediction = classifier.predict(roi_rgb)[0]
             label = classes[prediction.argmax()]
-            # label_position = (x, y - 10)
-            # cv2.putText(frame, label, label_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            print(label)
+            label_position = (x, y - 10)
+            cv2.putText(frame, label, label_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # print(label)
 
     cv2.imshow('Mask Detector', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
